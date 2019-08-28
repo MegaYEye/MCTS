@@ -3,7 +3,7 @@ import gym
 import numpy as np
 class MCTS(object):
     class Node(object):
-        def __init__(self, state, action = None, reward = 0):
+        def __init__(self, state, action = None, reward = 0, done = False):
             self.N = 0 # visited count N in UCB exploration
             self.Q = 0 # quality Q in UCB exploration
             self.children = []
@@ -25,7 +25,7 @@ class MCTS(object):
             if ucb>maxval:
                 maxval = ucb
                 sel = n
-        return 
+        return sel
         
     def default_policy(self):
         """
@@ -37,28 +37,29 @@ class MCTS(object):
         update Q, V; return to root
         """
         pass
+    def is_fully_expand(self, v):
+        num_total_action = self.env.action_space.n
+        return len(v.children) < num_total_action
+        
     def expand(self,v):
         """
         expand a node
         """
-        ret = None
         action_set = set([a for a in v.children.action])
-        num_total_action = self.env.action_space.sample()
-        if len(action_set) < num_total_action:
+        action = env.action_space.sample()
+        while action in action_set:
             action = env.action_space.sample()
-            while action in action_set:
-                action = env.action_space.sample()
-            next_state, reward, done, info = env.step(action)
-            new_child = Node(state = next_state, action = action, reward = reward)
-            v.children.append(new_child)
-            ret = new_child
+        next_state, reward, done, info = env.step(action)
+        new_child = Node(state = next_state, action = action, reward = reward, done = done)
+        v.children.append(new_child)
+        ret = new_child
         return ret
+    
     def tree_policy(self,v):
         """
         select and expand node
         """
-        while len(v.children)>0:
-            pass
+
 
     def uct_search(self):
         """
