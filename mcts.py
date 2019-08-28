@@ -1,6 +1,10 @@
 import os
 import gym
 import numpy as np
+"""
+十二方王牌大车併
+https://www.youtube.com/watch?v=-aACMW5gJwo&list=RDNlPy34UgdlQ&index=2
+"""
 class MCTS(object):
     class Node(object):
         def __init__(self, state, action = None, reward = 0, done = False):
@@ -11,6 +15,7 @@ class MCTS(object):
             self.parent = None
             self.state = state
             self.reward = reward
+            self.done = done
             
     def __init__(self, env):
         self.env = env
@@ -27,16 +32,25 @@ class MCTS(object):
                 sel = n
         return sel
         
-    def default_policy(self):
+    def default_policy(self, v):
         """
         random action (uniform)
         """
-        pass
-    def backup(self):
+        while v.done == False:
+            action = self.env.action_space.sample()
+            next_state, reward, done, info = env.step(action)
+        
+        return reward
+            
+    def backup(self, v, r):
         """
-        update Q, V; return to root
+        update the Q, V of all nodes previous to this current v.
         """
-        pass
+        while v is not None:
+            v.N = v.N +1
+            v.reward = v.reward + r
+            v = v.parent
+        
     def is_fully_expand(self, v):
         num_total_action = self.env.action_space.n
         return len(v.children) < num_total_action
@@ -48,7 +62,7 @@ class MCTS(object):
         action_set = set([a for a in v.children.action])
         action = env.action_space.sample()
         while action in action_set:
-            action = env.action_space.sample()
+            action = self.env.action_space.sample()
         next_state, reward, done, info = env.step(action)
         new_child = Node(state = next_state, action = action, reward = reward, done = done)
         v.children.append(new_child)
@@ -59,6 +73,12 @@ class MCTS(object):
         """
         select and expand node
         """
+        # is nontermial: need depth judgement or not?
+        while v.done == False:
+            if self.is_fully_expand(v):
+                return self.expand(v)
+            v = self.ucb_select()
+        return v
 
 
     def uct_search(self):
@@ -81,6 +101,6 @@ def run_env(env_name, n_episode=300, m_steps=1000):
             # line 83
             # https://github.com/tobegit3hub/ml_implementation/blob/master/monte_carlo_tree_search/mcst_example.py
     
-    
+
 if __name__ == "__main__":
     run_env("cartpole")
