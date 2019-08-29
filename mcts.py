@@ -1,24 +1,26 @@
 import os
 import gym
 import numpy as np
+from copy import deepcopy
 """
 十二方王牌大车併
 https://www.youtube.com/watch?v=-aACMW5gJwo&list=RDNlPy34UgdlQ&index=2
 """
 class MCTS(object):
     class Node(object):
-        def __init__(self, state, action = None, reward = 0, done = False):
+        def __init__(self, env, action = None, reward = 0, done = False, leaf_budget = 10):
             self.N = 0 # visited count N in UCB exploration
             self.Q = 0 # quality Q in UCB exploration
             self.children = []
             self.action = action # the action that leads to this node 
             self.parent = None
-            self.state = state
+            self.env = deepcopy(env)
             self.reward = reward
             self.done = done
+            self.leaf_budget = leaf_budget
             
     def __init__(self, env):
-        self.env = env
+        self.env = deepcopy(env)
         
     def ucb_select(self, c=0.707): # c is 1/sqrt(2), expermental value
         sel = None
@@ -34,13 +36,19 @@ class MCTS(object):
         
     def default_policy(self, v):
         """
-        random action (uniform)
+        random action (uniform). Could be a smarter policy, but currently this is enough...
         """
-        while v.done == False:
+        k = self.leaf_budget
+        env_leaf = deepcopy(v.env)
+        total_reward = 0
+        while v.done == False and (k is not None and k > 0):
             action = self.env.action_space.sample()
-            next_state, reward, done, info = env.step(action)
+            next_state, reward, done, info = env_leaf.step(action)
+            total_reward += reward
+            if k is not None:
+                k = k - 1
         
-        return reward
+        return total_reward
             
     def backup(self, v, r):
         """
@@ -60,11 +68,12 @@ class MCTS(object):
         expand a node
         """
         action_set = set([a for a in v.children.action])
-        action = env.action_space.sample()
+        action = v.env.action_space.sample()
         while action in action_set:
             action = self.env.action_space.sample()
-        next_state, reward, done, info = env.step(action)
-        new_child = Node(state = next_state, action = action, reward = reward, done = done)
+        env_next = deepcopy(v.env)
+        next_state, reward, done, info = env_next.step(action)
+        new_child = Node(env = env_next, action = action, reward = reward, done = done)
         v.children.append(new_child)
         ret = new_child
         return ret
@@ -80,13 +89,14 @@ class MCTS(object):
             v = self.ucb_select()
         return v
 
-    def mcts_search(self, state, search_depth = 10):
+    def mcts_search(self, search_depth = 10):
         """
         entry for ucb
         """
-        v0 = Node(state)
+        v0 = Node(self.env)
         for i in range(search_depth):
             v1 = self.tree_policy(v0)
+            # problem here: already execute something in tree policy, so the reward accumulation in 'expand' and 'default policy' is hot consensus???
             r = self.default_policy(v1)
             self.backup(v1, r)
         return self.ucb_select(0).action
@@ -94,10 +104,15 @@ class MCTS(object):
 # https://zhuanlan.zhihu.com/p/30458774
 def run_env(env_name, n_episode=300, m_steps=1000):
     env = gym.make(env_name)
-    mcts = MCTS(env)
+    
     for i in range(n_episode):
+        state = env.reset()
+        mcts = MCTS(env)
         for j in range(m_steps):
+            mcts = MCTS(env)
             act = mcts.mcts_search()
+            next_state, r, d, info = env.step(act)
+            
             
             # https://gist.github.com/blole/dfebbec182e6b72ec16b66cc7e331110
             # line 83
