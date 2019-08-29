@@ -75,28 +75,30 @@ class MCTS(object):
         """
         # is nontermial: need depth judgement or not?
         while v.done == False:
-            if self.is_fully_expand(v):
+            if not self.is_fully_expand(v):
                 return self.expand(v)
             v = self.ucb_select()
         return v
 
-
-    def uct_search(self):
+    def mcts_search(self, state, search_depth = 10):
         """
         entry for ucb
         """
-        # backup current env as root env
+        v0 = Node(state)
+        for i in range(search_depth):
+            v1 = self.tree_policy(v0)
+            r = self.default_policy(v1)
+            self.backup(v1, r)
+        return self.ucb_select(0).action
         
-        # within computational budget:
-
-        pass
-    
 # https://zhuanlan.zhihu.com/p/30458774
 def run_env(env_name, n_episode=300, m_steps=1000):
     env = gym.make(env_name)
-    
+    mcts = MCTS(env)
     for i in range(n_episode):
         for j in range(m_steps):
+            act = mcts.mcts_search()
+            
             # https://gist.github.com/blole/dfebbec182e6b72ec16b66cc7e331110
             # line 83
             # https://github.com/tobegit3hub/ml_implementation/blob/master/monte_carlo_tree_search/mcst_example.py
