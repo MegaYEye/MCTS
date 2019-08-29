@@ -67,6 +67,7 @@ class MCTS(object):
         """
         expand a node
         """
+        # this place needs improvements, but at least now, it is okay..
         action_set = set([a for a in v.children.action])
         action = v.env.action_space.sample()
         while action in action_set:
