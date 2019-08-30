@@ -2,10 +2,7 @@ import os
 import gym
 import numpy as np
 from copy import deepcopy
-"""
-十二方王牌大车併
-https://www.youtube.com/watch?v=-aACMW5gJwo&list=RDNlPy34UgdlQ&index=2
-"""
+
 class MCTS(object):
     class Node(object):
         def __init__(self, env, action = None, reward = 0, done = False, leaf_budget = 10):
@@ -17,18 +14,19 @@ class MCTS(object):
             self.env = deepcopy(env)
             self.reward = reward
             self.done = done
-            self.leaf_budget = leaf_budget
             
-    def __init__(self, env):
+            
+    def __init__(self, env, leaf_budget=10):
         self.env = deepcopy(env)
+        self.leaf_budget = leaf_budget
         
-    def ucb_select(self, c=0.707): # c is 1/sqrt(2), expermental value
+    def ucb_select(self, v, c=0.707): # c is 1/sqrt(2), expermental value
         sel = None
         maxval = 0
-        for n in self.children:
+        for n in v.children:
             if n.N < 1e-6:
                  return n
-            ucb = n.Q/n.N + c * np.sqrt(2*self.N/n.N)
+            ucb = n.Q/n.N + c * np.sqrt(2*v.N/n.N)
             if ucb>maxval:
                 maxval = ucb
                 sel = n
@@ -54,27 +52,32 @@ class MCTS(object):
         """
         update the Q, V of all nodes previous to this current v.
         """
+        # here I consider something called edge reward.
+        edge_reward=0
         while v is not None:
             v.N = v.N +1
-            v.reward = v.reward + r
+            v.Q = v.Q + r + edge_reward
+            edge_reward = v.reward
             v = v.parent
+            
+            
         
     def is_fully_expand(self, v):
         num_total_action = self.env.action_space.n
-        return len(v.children) < num_total_action
+        return len(v.children) == num_total_action
         
     def expand(self,v):
         """
         expand a node
         """
         # this place needs improvements, but at least now, it is okay..
-        action_set = set([a for a in v.children.action])
+        action_set = set([a.action for a in v.children])
         action = v.env.action_space.sample()
         while action in action_set:
             action = self.env.action_space.sample()
         env_next = deepcopy(v.env)
         next_state, reward, done, info = env_next.step(action)
-        new_child = Node(env = env_next, action = action, reward = reward, done = done)
+        new_child = self.Node(env = env_next, action = action, reward = reward, done = done)
         v.children.append(new_child)
         ret = new_child
         return ret
@@ -87,20 +90,22 @@ class MCTS(object):
         while v.done == False:
             if not self.is_fully_expand(v):
                 return self.expand(v)
-            v = self.ucb_select()
+            # bug: what if v is none?
+                v = self.ucb_select(v)
         return v
 
     def mcts_search(self, search_depth = 10):
         """
         entry for ucb
         """
-        v0 = Node(self.env)
+        v0 = self.Node(self.env)
         for i in range(search_depth):
+
             v1 = self.tree_policy(v0)
             # problem here: already execute something in tree policy, so the reward accumulation in 'expand' and 'default policy' is hot consensus???
             r = self.default_policy(v1)
             self.backup(v1, r)
-        return self.ucb_select(0).action
+        return self.ucb_select(v0, 0).action
         
 # https://zhuanlan.zhihu.com/p/30458774
 def run_env(env_name, n_episode=300, m_steps=1000):
@@ -113,6 +118,7 @@ def run_env(env_name, n_episode=300, m_steps=1000):
             mcts = MCTS(env)
             act = mcts.mcts_search()
             next_state, r, d, info = env.step(act)
+            if d:break
             
             # https://github.com/haroldsultan/MCTS/blob/master/mcts.py
             # https://gist.github.com/blole/dfebbec182e6b72ec16b66cc7e331110
@@ -121,4 +127,4 @@ def run_env(env_name, n_episode=300, m_steps=1000):
     
 
 if __name__ == "__main__":
-    run_env("cartpole")
+    run_env("CartPole-v1")
