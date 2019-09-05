@@ -149,11 +149,7 @@ def run_env(env_name, n_episode=10, m_steps=1000):
                 break
             # logger.info(total_reward)
             
-            
-            # https://github.com/haroldsultan/MCTS/blob/master/mcts.py
-            # https://gist.github.com/blole/dfebbec182e6b72ec16b66cc7e331110
-            # line 83
-            # https://github.com/tobegit3hub/ml_implementation/blob/master/monte_carlo_tree_search/mcst_example.py
+
     
 
 if __name__ == "__main__":
