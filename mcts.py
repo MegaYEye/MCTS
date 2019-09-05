@@ -2,7 +2,21 @@ import os
 import gym
 import numpy as np
 from copy import deepcopy
+import logging
+logging.basicConfig(level=logging.INFO,
+                   format='%(asctime)s  %(message)s',
+                   datefmt='%a, %d %b %Y %H:%M:%S +0000')
+logger = logging.getLogger('mainlogger')
+logger.info('main file log')
+def log_in_out(func):
+    
+    def decorated_func(*args, **kwargs):
+        logger.info("Enter "+ func.__name__)
+        result = func(*args, **kwargs)
+        logger.info("Leave "+ func.__name__)
+        return result
 
+    return decorated_func
 class MCTS(object):
     class Node(object):
         def __init__(self, env, action = None, reward = 0, done = False, leaf_budget = 10):
@@ -20,9 +34,10 @@ class MCTS(object):
         self.env = deepcopy(env)
         self.leaf_budget = leaf_budget
         
+    # @log_in_out
     def ucb_select(self, v, c=0.707): # c is 1/sqrt(2), expermental value
         sel = None
-        maxval = 0
+        maxval = -1
         for n in v.children:
             if n.N < 1e-6:
                  return n
@@ -30,8 +45,11 @@ class MCTS(object):
             if ucb>maxval:
                 maxval = ucb
                 sel = n
+        if sel is None:
+            logger.error("wtf")
         return sel
-        
+    
+    # @log_in_out
     def default_policy(self, v):
         """
         random action (uniform). Could be a smarter policy, but currently this is enough...
@@ -47,7 +65,8 @@ class MCTS(object):
                 k = k - 1
         
         return total_reward
-            
+    
+    # @log_in_out
     def backup(self, v, r):
         """
         update the Q, V of all nodes previous to this current v.
@@ -60,12 +79,11 @@ class MCTS(object):
             edge_reward = v.reward
             v = v.parent
             
-            
-        
     def is_fully_expand(self, v):
         num_total_action = self.env.action_space.n
         return len(v.children) == num_total_action
-        
+    
+    # @log_in_out
     def expand(self,v):
         """
         expand a node
@@ -82,6 +100,7 @@ class MCTS(object):
         ret = new_child
         return ret
     
+    # @log_in_out
     def tree_policy(self,v):
         """
         select and expand node
@@ -91,16 +110,18 @@ class MCTS(object):
             if not self.is_fully_expand(v):
                 return self.expand(v)
             # bug: what if v is none?
-                v = self.ucb_select(v)
+            
+            v = self.ucb_select(v)
         return v
-
-    def mcts_search(self, search_depth = 10):
+    
+    # @log_in_out
+    def mcts_search(self, search_depth = 25):
         """
         entry for ucb
         """
         v0 = self.Node(self.env)
         for i in range(search_depth):
-
+            
             v1 = self.tree_policy(v0)
             # problem here: already execute something in tree policy, so the reward accumulation in 'expand' and 'default policy' is hot consensus???
             r = self.default_policy(v1)
@@ -108,17 +129,26 @@ class MCTS(object):
         return self.ucb_select(v0, 0).action
         
 # https://zhuanlan.zhihu.com/p/30458774
-def run_env(env_name, n_episode=300, m_steps=1000):
+def run_env(env_name, n_episode=10, m_steps=1000):
     env = gym.make(env_name)
-    
+   
     for i in range(n_episode):
+        total_reward = 0
         state = env.reset()
         mcts = MCTS(env)
         for j in range(m_steps):
+            # logger.info("step start")
             mcts = MCTS(env)
             act = mcts.mcts_search()
             next_state, r, d, info = env.step(act)
-            if d:break
+            total_reward += r
+            # logger.info(next_state)
+            if d:
+                logger.info("episode done!")
+                logger.info(total_reward)
+                break
+            # logger.info(total_reward)
+            
             
             # https://github.com/haroldsultan/MCTS/blob/master/mcts.py
             # https://gist.github.com/blole/dfebbec182e6b72ec16b66cc7e331110
