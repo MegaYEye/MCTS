@@ -37,7 +37,7 @@ class MCTS(object):
     # @log_in_out
     def ucb_select(self, v, c=0.707): # c is 1/sqrt(2), expermental value
         sel = None
-        maxval = -1
+        maxval = -1e10
         for n in v.children:
             if n.N < 1e-6:
                  return n
@@ -109,19 +109,19 @@ class MCTS(object):
         while v.done == False:
             if not self.is_fully_expand(v):
                 return self.expand(v)
-            # bug: what if v is none?
-            
+
+            v_bak = v
             v = self.ucb_select(v)
+            
         return v
     
     # @log_in_out
-    def mcts_search(self, search_depth = 25):
+    def mcts_search(self, search_depth = 30):
         """
         entry for ucb
         """
         v0 = self.Node(self.env)
         for i in range(search_depth):
-            
             v1 = self.tree_policy(v0)
             # problem here: already execute something in tree policy, so the reward accumulation in 'expand' and 'default policy' is hot consensus???
             r = self.default_policy(v1)
@@ -129,7 +129,7 @@ class MCTS(object):
         return self.ucb_select(v0, 0).action
         
 # https://zhuanlan.zhihu.com/p/30458774
-def run_env(env_name, n_episode=10, m_steps=1000):
+def run_env(env_name, n_episode=2, m_steps=1000):
     env = gym.make(env_name)
    
     for i in range(n_episode):
@@ -138,6 +138,7 @@ def run_env(env_name, n_episode=10, m_steps=1000):
         mcts = MCTS(env)
         for j in range(m_steps):
             # logger.info("step start")
+            print("step %d, reward %d" % (j, total_reward) )
             mcts = MCTS(env)
             act = mcts.mcts_search()
             next_state, r, d, info = env.step(act)
@@ -151,6 +152,6 @@ def run_env(env_name, n_episode=10, m_steps=1000):
             
 
     
-
+# why the performance is highly random????
 if __name__ == "__main__":
     run_env("CartPole-v1")
