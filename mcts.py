@@ -74,7 +74,7 @@ class MCTS(object):
         # here I consider something called edge reward.
         edge_reward=0
         while v is not None:
-            v.N = v.N +1
+            v.N = v.N + 1
             v.Q = v.Q + r + edge_reward
             edge_reward = v.reward
             v = v.parent
@@ -129,7 +129,7 @@ class MCTS(object):
         return self.ucb_select(v0, 0).action
         
 # https://zhuanlan.zhihu.com/p/30458774
-def run_env(env_name, n_episode=2, m_steps=1000):
+def run_env(env_name, n_episode=1, m_steps=1000):
     env = gym.make(env_name)
    
     for i in range(n_episode):
